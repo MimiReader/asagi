@@ -14,6 +14,8 @@ import net.easymodo.asagi.settings.Settings;
 import java.io.*;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.util.HashMap;
+import java.util.Map;
 
 public class Asagi {
     private static final String SETTINGS_FILE = "./asagi.json";
@@ -22,6 +24,24 @@ public class Asagi {
     private static BufferedWriter debugOut = null;
     private static String dumperEngine;
     private static String sourceEngine;
+
+    private static Map<String, Class<? extends DB>> dbClassMapper = new HashMap<String, Class<? extends DB>>();
+    static {
+        dbClassMapper.put("Mysql", Mysql.class);
+        dbClassMapper.put("Pgsql", Pgsql.class);
+    }
+
+    private static Map<String, Class<? extends YotsubaAbstract>> sourceBoardMapper = new HashMap<String, Class<? extends YotsubaAbstract>>();
+    static {
+        sourceBoardMapper.put("YotsubaHTML", YotsubaHTML.class);
+        sourceBoardMapper.put("YotsubaJSON", YotsubaJSON.class);
+    }
+
+    private static Map<String, Class<? extends AbstractDumper>> dumperMapper = new HashMap<String, Class<? extends AbstractDumper>>();
+    static {
+        dumperMapper.put("DumperClassic", DumperClassic.class);
+        dumperMapper.put("DumperJSON", DumperJSON.class);
+    }
 
     public static BufferedWriter getDebugOut() {
         return debugOut;
@@ -46,8 +66,7 @@ public class Asagi {
 
         final RedisCache redisCache;
         if (redisCacheSettings != null) {
-            redisCache = new RedisCache(redisCacheSettings);
-            redisCache.
+            redisCache = new RedisCache(redisCacheSettings, bSet);
         } else {
             redisCache = null;
         }
@@ -59,10 +78,8 @@ public class Asagi {
         // Init source board engine through reflection
         Board sourceBoard;
         try {
-            Class<?> sourceBoardClass = Class.forName("net.easymodo.asagi." + sourceEngine);
-            sourceBoard = (Board) sourceBoardClass.getConstructor(String.class, BoardSettings.class).newInstance(boardName, bSet);
-        } catch(ClassNotFoundException e) {
-            throw new BoardInitException("Error initializing board engine " + sourceEngine + ", no such engine?");
+            Class<? extends YotsubaAbstract> sourceBoardClass = sourceBoardMapper.get(sourceEngine);
+            sourceBoard = sourceBoardClass.getConstructor(String.class, BoardSettings.class).newInstance(boardName, bSet);
         } catch(Exception e) {
             throw new BoardInitException("Error initializing board engine " + sourceEngine);
         }
@@ -71,25 +88,23 @@ public class Asagi {
         String boardEngine = bSet.getEngine() == null ? "Mysql" : bSet.getEngine();
         bSet.setEngine(boardEngine);
 
-        Class<?> sqlBoardClass;
-        Constructor<?> boardCnst;
+        Class<? extends DB> sqlBoardClass;
+        Constructor<? extends DB> boardCnst;
 
         // Init two DB objects: one for topic insertion and another
         // for media insertion
-        Object topicDbObj;
-        Object mediaDbObj;
+        DB topicDb;
+        DB mediaDb;
 
         try {
-            sqlBoardClass = Class.forName("net.easymodo.asagi." + boardEngine);
+            sqlBoardClass = dbClassMapper.get(boardEngine);
             boardCnst = sqlBoardClass.getConstructor(String.class, BoardSettings.class);
 
             // For topics
-            topicDbObj = boardCnst.newInstance(bSet.getPath(), bSet);
+            topicDb = boardCnst.newInstance(bSet.getPath(), bSet);
 
             // For media
-            mediaDbObj = boardCnst.newInstance(bSet.getPath(), bSet);
-        } catch(ClassNotFoundException e) {
-            throw new BoardInitException("Could not find board engine for " + boardEngine);
+            mediaDb = boardCnst.newInstance(bSet.getPath(), bSet);
         } catch(NoSuchMethodException e) {
             throw new BoardInitException("Error initializing board engine " + boardEngine);
         } catch(InstantiationException e) {
@@ -104,30 +119,15 @@ public class Asagi {
             throw new BoardInitException("Error initializing board engine " + boardEngine);
         }
 
-        // Making sure we got valid DB engines for post and media insertion
-        DB topicDb = null;
-        DB mediaDb = null;
-
-        if(topicDbObj instanceof DB && mediaDbObj instanceof DB) {
-            topicDb = (DB) topicDbObj;
-            mediaDb = (DB) mediaDbObj;
-        }
-
-        if(topicDb == null) {
-            throw new BoardInitException("Wrong engine specified for " + boardEngine);
-        }
-
         Local topicLocalBoard = new Local(bSet.getPath(), bSet, topicDb);
         Local mediaLocalBoard = new Local(bSet.getPath(), bSet, mediaDb);
 
         // And the dumper, le sigh.
         AbstractDumper dumper;
         try {
-            Class<?> dumperClass = Class.forName("net.easymodo.asagi." + dumperEngine);
-            dumper = (AbstractDumper) dumperClass.getConstructor(String.class, Local.class, Local.class, Board.class, boolean.class, boolean.class, int.class)
+            Class<? extends AbstractDumper> dumperClass = dumperMapper.get(dumperEngine);
+            dumper = dumperClass.getConstructor(String.class, Local.class, Local.class, Board.class, boolean.class, boolean.class, int.class)
                     .newInstance(boardName, topicLocalBoard, mediaLocalBoard, sourceBoard, fullThumb, fullMedia, pageLimbo);
-        } catch(ClassNotFoundException e) {
-            throw new BoardInitException("Error initializing dumper engine " + dumperEngine + ", no such engine?");
         } catch(Exception e) {
             throw new BoardInitException("Error initializing dumper engine " + dumperEngine);
         }
