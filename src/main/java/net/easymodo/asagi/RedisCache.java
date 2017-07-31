@@ -54,7 +54,7 @@ public class RedisCache implements DB {
     public void insert(Topic topic) {
         Jedis redis = redisPool.getResource();
         if (redis.isConnected()) {
-            redis.hmset(topic.)
+            // put data into redis
         }
     }
 
