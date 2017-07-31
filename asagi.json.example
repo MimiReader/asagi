@@ -1,6 +1,12 @@
 {"settings": {
   "dumperEngine": "DumperJSON",
   "sourceEngine": "YotsubaJSON",
+  "redisCacheSettings": {
+    "host": "localhost",
+    "port": 6379,
+    "username": "username",
+    "password": "password",
+  }
 
   "boardSettings": {
     "default": {

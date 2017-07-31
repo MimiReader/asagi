@@ -8,6 +8,7 @@ import com.google.gson.JsonSyntaxException;
 import net.easymodo.asagi.exception.BoardInitException;
 import net.easymodo.asagi.settings.BoardSettings;
 import net.easymodo.asagi.settings.OuterSettings;
+import net.easymodo.asagi.settings.RedisCacheSettings;
 import net.easymodo.asagi.settings.Settings;
 
 import java.io.*;
@@ -41,6 +42,15 @@ public class Asagi {
 
     private static void spawnBoard(String boardName, Settings settings) throws BoardInitException {
         BoardSettings bSet = getBoardSettings(settings, boardName);
+        RedisCacheSettings redisCacheSettings = settings.getRedisCacheSettings();
+
+        final RedisCache redisCache;
+        if (redisCacheSettings != null) {
+            redisCache = new RedisCache(redisCacheSettings);
+            redisCache.
+        } else {
+            redisCache = null;
+        }
 
         int pageLimbo = bSet.getDeletedThreadsThresholdPage();
         boolean fullThumb = (bSet.getThumbThreads() != 0);

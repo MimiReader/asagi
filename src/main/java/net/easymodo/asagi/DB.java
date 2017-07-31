@@ -10,7 +10,11 @@ import net.easymodo.asagi.model.MediaPost;
 import net.easymodo.asagi.model.Topic;
 import net.easymodo.asagi.settings.BoardSettings;
 
+import java.sql.SQLException;
+
 public interface DB {
+    void connect() throws SQLException;
+    void reconnect() throws DBConnectionException;
     void init(String connStr, String path, BoardSettings info) throws BoardInitException;
     void insert(Topic topic) throws ContentStoreException, DBConnectionException;
     Media getMedia(MediaPost h) throws ContentGetException, ContentStoreException, DBConnectionException;

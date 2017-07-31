@@ -6,6 +6,7 @@ import java.util.Map;
 public class Settings {
     private String dumperEngine;
     private String sourceEngine;
+    private RedisCacheSettings redisCacheSettings;
     private Map<String, BoardSettings> boardSettings;
 
 
@@ -31,5 +32,9 @@ public class Settings {
 
     public void setSourceEngine(String sourceEngine) {
         this.sourceEngine = sourceEngine;
+    }
+
+    public RedisCacheSettings getRedisCacheSettings() {
+        return redisCacheSettings;
     }
 }
